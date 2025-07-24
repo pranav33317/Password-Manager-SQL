@@ -1,223 +1,213 @@
 import mysql.connector
-import random
-import tabulate
-
+import bcrypt
+from cryptography.fernet import Fernet
 from tabulate import tabulate
-conn=mysql.connector.connect(host='localhost',user='root',passwd='123',charset="utf8")
-cur=conn.cursor()
-cur.execute("create database if not exists project")
-cur.execute("use project")
+import random
 
-cur.execute("create table if not exists passwords (NO int  primary key not null auto_increment,Username  varchar(240) not null ,Password varchar(240),Email_linked varchar(240),App_name varchar(240))")
-cur.execute("alter table passwords auto_increment=100")
-conn.commit()
+# Generate and save this securely for production
+fernet_key = Fernet.generate_key()
+cipher = Fernet(fernet_key)
 
-cur.execute("create table if not exists user (NO int  primary key not null auto_increment,Username  varchar(240) not null ,Password varchar(240))")
+conn = mysql.connector.connect(host='localhost', user='root', passwd='123', charset="utf8")
+cur = conn.cursor()
+cur.execute("CREATE DATABASE IF NOT EXISTS project")
+cur.execute("USE project")
 
+cur.execute("""
+    CREATE TABLE IF NOT EXISTS passwords (
+        NO INT PRIMARY KEY NOT NULL AUTO_INCREMENT,
+        Username VARCHAR(240) NOT NULL,
+        Password TEXT,
+        Email_linked VARCHAR(240),
+        App_name VARCHAR(240)
+    )
+""")
+cur.execute("ALTER TABLE passwords AUTO_INCREMENT=100")
 
-cur.execute("alter table user auto_increment=50")
-conn.commit()
-c="insert into user (Username,Password)\
-values('{}','{}')".format("jebin","secret")
-cur.execute(c)
-conn.commit()
+cur.execute("""
+    CREATE TABLE IF NOT EXISTS user (
+        NO INT PRIMARY KEY NOT NULL AUTO_INCREMENT,
+        Username VARCHAR(240) NOT NULL,
+        Password VARBINARY(255)
+    )
+""")
+cur.execute("ALTER TABLE user AUTO_INCREMENT=50")
+
+# Insert master user if not already present
+cur.execute("SELECT COUNT(*) FROM user")
+if cur.fetchone()[0] == 0:
+    hashed = bcrypt.hashpw("secret".encode(), bcrypt.gensalt())
+    cur.execute("INSERT INTO user (Username, Password) VALUES (%s, %s)", ("jebin", hashed))
+    conn.commit()
+
 
 def adddata():
-	
-	while True:
-		print("* press enter to skip any field execept Username *")
-		print("")
-		username=input("Enter the  username           :")
-		password=input("The password assigned         :")
-		email=input("The Email address linked      :")
-		app=input("The app name                  :")
-			
-		c="insert into passwords (Username,Password,Email_linked,App_name)\
-		values('{}','{}','{}','{}')".format(username,password,email,app)
-		cur.execute(c)
-		conn.commit()
-		print("")
-		print("Data added succesfully!!!!")
-		print("-----👉👉👉 1 to add more  👈👈👈-------👉👉👉 2 to leave 👈👈👈------")
-		print("")
-		op=int(input("Enter your option:  "))
-		print("")
-		if op==2:
-			print("<<<<<<<< Returning to main menu >>>>>>>>")
-			break    
+    while True:
+        print("* Press enter to skip any field except Username *")
+        username = input("Enter the username           : ")
+        password = input("The password assigned         : ")
+        email = input("The Email address linked      : ")
+        app = input("The app name                  : ")
 
-def autogen():
-	while True:
-		print("")
-		print("* press enter to skip any field execept Username *")
-		print("")
-		username=input("Enter the  username           :")
-		password=passwordgen()
-		email=input("The Email address linked      :")
-		app=input("The app name                  :")
-			
-		c="insert into passwords (Username,Password,Email_linked,App_name)\
-		values('{}','{}','{}','{}')".format(username,password,email,app)
-		cur.execute(c)
-		conn.commit()
-		print("")
-		print("Password generated=",password)
-		print("Data added succesfully!!!!")
-		print("-----👉👉👉 1 to add more  👈👈👈-------👉👉👉 2 to leave 👈👈👈------")
-		print("")
-		op=int(input("Enter your option:  "))
-		print("")
-		if op==2:
-			print("<<<<<<<< Returning to main menu >>>>>>>>")
-			break    
+        if not username:
+            print("Username is required.")
+            continue
+
+        enc_pass = cipher.encrypt(password.encode())
+
+        try:
+            conn.start_transaction()
+            cur.execute(
+                "INSERT INTO passwords (Username, Password, Email_linked, App_name) VALUES (%s, %s, %s, %s)",
+                (username, enc_pass, email, app)
+            )
+            conn.commit()
+            print("Data added successfully!")
+        except Exception as e:
+            conn.rollback()
+            print(f"Error: {e}")
+        finally:
+            op = input("👉 1 to add more | 2 to leave: ")
+            if op == '2':
+                break
+
 
 def passwordgen():
-	low="abcdefghijklmnopqrstuvwxyz"
-	upp="ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	num="0123456789"
-	sym="!@#$%^&*"
+    low = "abcdefghijklmnopqrstuvwxyz"
+    upp = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    num = "0123456789"
+    sym = "!@#$%^&*"
+    all_chars = low + upp + num + sym
+    length = int(input("Enter password length (>=8): "))
+    return "".join(random.sample(all_chars, length))
 
-	all=low+upp+num+sym
-	print(">>>>>::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::<<<<<")
-	length=int(input("Enter the length of password *for safety use atleast 8 characters* ::"))
-	print(">>>>>::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::<<<<<")
-	password="".join(random.sample(all,length))
-	return password
 
+def autogen():
+    while True:
+        username = input("Enter the username           : ")
+        email = input("The Email address linked      : ")
+        app = input("The app name                  : ")
+        password = passwordgen()
+        enc_pass = cipher.encrypt(password.encode())
+
+        try:
+            conn.start_transaction()
+            cur.execute(
+                "INSERT INTO passwords (Username, Password, Email_linked, App_name) VALUES (%s, %s, %s, %s)",
+                (username, enc_pass, email, app)
+            )
+            conn.commit()
+            print("Password generated =", password)
+            print("Data added successfully!")
+        except Exception as e:
+            conn.rollback()
+            print(f"Error: {e}")
+        finally:
+            op = input("👉 1 to add more | 2 to leave: ")
+            if op == '2':
+                break
+
+
+def display():
+    try:
+        cur.execute("SELECT * FROM passwords")
+        data = cur.fetchall()
+        decrypted_data = [
+            (no, user, cipher.decrypt(password).decode(), email, app)
+            for no, user, password, email, app in data
+        ]
+        print(tabulate(decrypted_data, headers=['NO', 'Username', 'Password', 'Email_linked', 'App_name'], tablefmt="grid"))
+    except Exception as e:
+        print(f"Error fetching data: {e}")
 
 
 def search():
-		
-	d=input("Enter the name of app  to be searched:  ")
-	cur.execute("select * from passwords where App_name like '{}' ".format(d))
-	r=[]
-	for i in cur:
-		r.append(i)
-	h=['NO','Username','Password','Email_linked','App_name']
-	print("")
-	
-	print(tabulate(r,headers=h,tablefmt="grid"))
-	print("")
-	print("<<<<<<<< Returning to main menu >>>>>>>>")
-	print("")
+    app = input("Enter the app name to search: ")
+    try:
+        cur.execute("SELECT * FROM passwords WHERE App_name LIKE %s", (app,))
+        data = cur.fetchall()
+        decrypted_data = [
+            (no, user, cipher.decrypt(password).decode(), email, app_name)
+            for no, user, password, email, app_name in data
+        ]
+        print(tabulate(decrypted_data, headers=['NO', 'Username', 'Password', 'Email_linked', 'App_name'], tablefmt="grid"))
+    except Exception as e:
+        print(f"Error: {e}")
+
 
 def removedetails():
-	display()
-	print("")
-	f=int(input("Enter the NO                      :"))
-	d=input("Enter the app name to be deleted  :")
-	print("")
-	op=input("Sure you want to remove ?(y/n)    :")
-	print("")
-	while True:
-			
-		if op=="y":
-			cur.execute("delete from passwords where App_name='{}' and NO={}".format(d,f))
-			conn.commit()
-			print("")
-			print("Data Remmoved!!!")
-			print("")
-			print("<<<<<<<< Returning to main menu >>>>>>>>")
-			print("")
-			break
-		else:
-			print("Process aborted!!!! ")
-			print("")
-			print("<<<<<<<< Returning to main menu >>>>>>>>")
-			print("")
-			break
+    display()
+    try:
+        no = int(input("Enter the NO: "))
+        app = input("Enter the app name: ")
+        confirm = input("Are you sure? (y/n): ")
+        if confirm.lower() == 'y':
+            conn.start_transaction()
+            cur.execute("DELETE FROM passwords WHERE NO = %s AND App_name = %s", (no, app))
+            conn.commit()
+            print("Data removed.")
+        else:
+            print("Operation cancelled.")
+    except Exception as e:
+        conn.rollback()
+        print(f"Error: {e}")
 
-def changepass():
-	display()
-	print("")
-	f=int(input("Enter the NO               :"))
-	d=input("Enter the App_name         :")
-	print("")
-	pos=input('Enter the new password     :')
-	cur.execute("update passwords set Password='{}' where App_name='{}' and NO={}".format(pos,d,f))
-	conn.commit()
-	print("")
-	print("Password changed to ",pos," !!!")
-	print("")
-	print("<<<<<<<< Returning to main menu >>>>>>>>")
-	print("")
 
-def changeuser():
-	display()
-	f=int(input("Enter the NO               :"))
-	d=input("Enter the App_name         :  ")
-	print("")
-	pos=input('Enter the new Username     :  ')
-	cur.execute("update passwords set Username='{}' where App_name='{}' and NO={}".format(pos,d,f))
-	conn.commit()
-	print("")
-	print("Username changed to ",pos," !!!")
-	print("")
-	print("<<<<<<<< Returning to main menu >>>>>>>>")
-	print("")
+def update_field(field):
+    display()
+    try:
+        no = int(input("Enter the NO: "))
+        app = input("Enter the App_name: ")
+        new_val = input(f"Enter the new {field}: ")
 
-def changeemail():
-	display()
-	f=int(input("Enter the NO               :"))
-	d=input("Enter the App_name         :")
-	print("")
-	
-	pos=input('Enter the new Email_linked :  ')
-	cur.execute("update passwords set Email_linked='{}' where App_name='{}' and NO={}".format(pos,d,f))
-	conn.commit()
-	print("")
-	print("Email_linked changed to ",pos," !!!")
-	print("")
-	print("<<<<<<<< Returning to main menu >>>>>>>>")
-	print("")
-	
+        if field == "Password":
+            new_val = cipher.encrypt(new_val.encode())
 
-def display():
-	cur.execute("select * from passwords")
-	r=[]
-	for i in cur:
-		r.append(i)
-	h=['NO','Username','Password','Email_linked','App_name']
-	print("")
-	print(tabulate(r,headers=h,tablefmt="grid"))
-	print("")
-	
-	print("")
+        conn.start_transaction()
+        cur.execute(f"UPDATE passwords SET {field} = %s WHERE NO = %s AND App_name = %s", (new_val, no, app))
+        conn.commit()
+        print(f"{field} updated.")
+    except Exception as e:
+        conn.rollback()
+        print(f"Error: {e}")
+
+
+def changepass(): update_field("Password")
+def changeuser(): update_field("Username")
+def changeemail(): update_field("Email_linked")
+
 
 def total():
-	cur.execute("select * from passwords")
-	r=[]
-	for i in cur:
-		r.append(i)
-	return len(r)
+    cur.execute("SELECT COUNT(*) FROM passwords")
+    return cur.fetchone()[0]
+
 
 def mainuser():
-	pos=input('Enter the new master Username:')
-	cur.execute("update user set Username='{}' ".format(pos))
-	conn.commit()
-	print("")
-	print("Master username changed to ",pos," !!!")
-	print("")
-	print("<<<<<<<< Returning to main menu >>>>>>>>")
-	print("")
+    new_user = input("Enter new master Username: ")
+    try:
+        cur.execute("UPDATE user SET Username = %s", (new_user,))
+        conn.commit()
+        print("Username updated.")
+    except Exception as e:
+        print(f"Error: {e}")
+
 
 def mainpass():
-	pos=input('Enter the new password       :')
-	cur.execute("update user set Password='{}'".format(pos))
-	conn.commit()
-	print("")
-	print("Master password changed to ",pos," !!!")
-	print("")
-	print("<<<<<<<< Returning to main menu >>>>>>>>")
-	print("")
+    new_pass = input("Enter new master Password: ")
+    hashed = bcrypt.hashpw(new_pass.encode(), bcrypt.gensalt())
+    try:
+        cur.execute("UPDATE user SET Password = %s", (hashed,))
+        conn.commit()
+        print("Password updated.")
+    except Exception as e:
+        print(f"Error: {e}")
 
-def getpass():
-	cur.execute("select Password from user")
-	x= cur.fetchall()
-	return x[0]
-	
 
 def getuser():
-	cur.execute("select Username from user")
-	x= cur.fetchall()
-	return x[0]
+    cur.execute("SELECT Username FROM user")
+    return cur.fetchone()[0]
+
+
+def getpass():
+    cur.execute("SELECT Password FROM user")
+    return cur.fetchone()[0]
