@@ -17,7 +17,7 @@ cur.execute("""
     CREATE TABLE IF NOT EXISTS passwords (
         NO INT PRIMARY KEY NOT NULL AUTO_INCREMENT,
         Username VARCHAR(240) NOT NULL,
-        Password TEXT,
+        Password VARBINARY(255),
         Email_linked VARCHAR(240),
         App_name VARCHAR(240)
     )
