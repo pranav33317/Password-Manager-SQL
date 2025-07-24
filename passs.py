@@ -73,13 +73,41 @@ def adddata():
 
 
 def passwordgen():
+    import random
+
     low = "abcdefghijklmnopqrstuvwxyz"
     upp = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     num = "0123456789"
     sym = "!@#$%^&*"
+
     all_chars = low + upp + num + sym
-    length = int(input("Enter password length (>=8): "))
-    return "".join(random.sample(all_chars, length))
+
+    while True:
+        try:
+            length = int(input("Enter password length (min 4): "))
+            if length < 4:
+                print("Password length must be at least 4.")
+                continue
+            break
+        except ValueError:
+            print("Please enter a valid number.")
+
+    # Ensure one of each category
+    password = [
+        random.choice(low),
+        random.choice(upp),
+        random.choice(num),
+        random.choice(sym)
+    ]
+
+    # Fill the rest with random choices from all characters
+    password += random.choices(all_chars, k=length - 4)
+
+    # Shuffle to avoid predictable pattern
+    random.shuffle(password)
+
+    return ''.join(password)
+
 
 
 def autogen():
