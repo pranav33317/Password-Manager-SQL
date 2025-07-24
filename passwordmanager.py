@@ -1,231 +1,169 @@
 import passs
 import os
 import time
-uuu=passs.getuser()
-ppp=passs.getpass()
+import bcrypt
 
-username=uuu[0]
-password=ppp[0]
-print("--PASSWORD MANAGER--".center(71,"🔑"))  
+# Fetch username and hashed password from DB
+username = passs.getuser()
+password_hash = passs.getpass()  # hashed (binary)
+
+print("--PASSWORD MANAGER--".center(71, "🔑"))
 print("^^^^^^^^^^^^^^^^^")
-user=input("Enter your username     :: ")
-pas=input("Enter your password     :: ")
+
+# First login attempt
+user = input("Enter your username     :: ")
+pas = input("Enter your password     :: ")
 print("^^^^^^^^^^^^^^^^^")
-if username!= user or password != pas:
-    print("")
-    print("Incorrect username or password.")
+
+# Validate credentials
+if user != username or not bcrypt.checkpw(pas.encode(), password_hash):
+    print("\nIncorrect username or password.")
     print("Retry in 5 seconds...*WARNING!!! ONLY ONE MORE CHANCE!!!!*")
-    for i in range(1,6):
-        print(i," >> ",end="")
+    for i in range(1, 6):
+        print(i, " >> ", end="")
         time.sleep(1)
 
-    
-    print("")
-    print("")
+    print("\n\n^^^^^^^^^^^^^^^^^")
+    user = input("Enter your username     :: ")
+    pas = input("Enter your password     :: ")
     print("^^^^^^^^^^^^^^^^^")
-    user=input("Enter your username     :: ")
-    pas=input("Enter your password     :: ")
-    print("^^^^^^^^^^^^^^^^^")
-    print("")
-    if username!= user or password != pas:
-        print("")
-        print("⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠")
-        print("")
-        print("Incorrect username or password.")
-        print("No more chances , exiting in >>>>>>>>")
-        for i in range(1,3):
-            print(i," >> ",end="")
+
+    if user != username or not bcrypt.checkpw(pas.encode(), password_hash):
+        print("\n⚠⚠⚠ Incorrect username or password ⚠⚠⚠")
+        print("No more chances. Exiting in:")
+        for i in range(1, 3):
+            print(i, " >> ", end="")
             time.sleep(1)
+        exit()
 
-        print("⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠")
-        print("")
-        
-        os.system("cls")
-print("")
-while user== username and pas==password:
-      
-    print("")
-    print("🎇_______________________________________________MAIN MENU________________________________________________________________🎇")
-    print("")
-    print("🔐*************************************************************************************************************************🔐")
-    print("              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~<<<-👉 1 👈-to ADD DETAILS >>>~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-    print("              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~<<<-👉 2 👈-to EDIT DETAILS >>>~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-    print("              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~<<<-👉 3 👈-to REMOVE DETAILS >>>~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-    print("              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~<<<-👉 4 👈-to VEIW ALL >>>~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-    print("              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~<<<-👉 5 👈-to AUTO GENERATE PASSWORD FOR OTHER USES >>>~~~~~~~~")
-    print("              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~<<<-👉 6 👈-to SEARCH >>>~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-    print("              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~<<<-👉 7 👈-for APP SETTINGS >>>~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-    print("              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~<<<-👉 8 👈-to EXIT >>>~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-    print("🔐*************************************************************************************************************************🔐")
-    print("")
-    
-    option=int(input("Enter your option::"))
-    
-    
-    if option==1:
-        print("")
-        print("⚙"*20)
-        print("")
-        print("-> a <- to ADD DETAILS.")
-        print("-> b <- to ADD DETAIL WITH AUTO PASSWORD.")
-        print("-> c <- to GO TO MAIN MENU.")
-        print("")
-        print("⚙"*20)
-        print("")
-        optionevent=input("Enter your option::")
-        while True:
-            
+# Main menu loop
+while True:
+    print("\n🎇__________________________ MAIN MENU __________________________🎇")
+    print("🔐" + "*" * 65 + "🔐")
+    print("👉 1. ADD DETAILS")
+    print("👉 2. EDIT DETAILS")
+    print("👉 3. REMOVE DETAILS")
+    print("👉 4. VIEW ALL")
+    print("👉 5. AUTO GENERATE PASSWORD")
+    print("👉 6. SEARCH")
+    print("👉 7. APP SETTINGS")
+    print("👉 8. EXIT")
+    print("🔐" + "*" * 65 + "🔐\n")
 
-            if optionevent.lower() == "a":
-                passs.adddata()
-                break
-            elif optionevent.lower() =="b":
-                passs.autogen()
-                break
+    try:
+        option = int(input("Enter your option:: "))
+    except ValueError:
+        print("Invalid input. Please enter a number.")
+        continue
 
-            elif optionevent.lower() == "c":
-                print("")
-                print("<<<<<<<< Returning to main menu >>>>>>>>")
-				#print("")
-                break
-            else:
-                print("")
-                print("Enter a valid option!!!")
-                pirnt("")
-                break
+    if option == 1:
+        print("\n" + "⚙" * 20)
+        print("a. ADD MANUAL ENTRY")
+        print("b. ADD WITH AUTO PASSWORD")
+        print("c. RETURN TO MAIN MENU")
+        print("⚙" * 20 + "\n")
 
-    elif option==2:
-        if passs.total() == 0:
-            print("")
-            print("No details added yet!!")
-            print("")
+        optionevent = input("Enter your option:: ").lower()
+
+        if optionevent == "a":
+            passs.adddata()
+        elif optionevent == "b":
+            passs.autogen()
+        elif optionevent == "c":
+            print("<< Returning to main menu >>")
         else:
-            
-            print("")
-            print("🛠"*20)
-            print("")
-            print("-> a <- to CHANGE PASSWORD.")
-            print("-> b <- to CHANGE USERNAME.")
-            print("-> c <- to CHANGE EMAIL LINKED.")
-            print("-> d <- to RETURN TO MAIN MENU. ")
-            print("")
-            print("🛠"*20)
-            print("")
-            optioncar=input("Enter your option::  ")
-            print("")
-            while True:
-                
+            print("Invalid option!")
 
-                if optioncar.lower() == "a":
-                    passs.changepass()  
-                    break
-                elif optioncar.lower() == "b":
-                    passs.changeuser()
-                    break
-                elif optioncar.lower() == "c":
-                    passs.changeemail()
-                    break
-                
-                elif optioncar.lower() == "d":
-                    print("")
-                    print("<<<<<<<< Returning to main menu >>>>>>>>")
-                    #print("")
-                    break
-                else:
-                    print("")
-                    print("Enter a valid option!!!")
-                    print("")
-                    break
-
-    elif option==3:
+    elif option == 2:
         if passs.total() == 0:
-            print("")
-            print("No details added yet!!")
-            print("")
+            print("\nNo details added yet!\n")
+        else:
+            print("\n" + "🛠" * 20)
+            print("a. CHANGE PASSWORD")
+            print("b. CHANGE USERNAME")
+            print("c. CHANGE EMAIL")
+            print("d. RETURN TO MAIN MENU")
+            print("🛠" * 20 + "\n")
+
+            optioncar = input("Enter your option:: ").lower()
+
+            if optioncar == "a":
+                passs.changepass()
+            elif optioncar == "b":
+                passs.changeuser()
+            elif optioncar == "c":
+                passs.changeemail()
+            elif optioncar == "d":
+                print("<< Returning to main menu >>")
+            else:
+                print("Invalid option!")
+
+    elif option == 3:
+        if passs.total() == 0:
+            print("\nNo details added yet!\n")
         else:
             passs.removedetails()
-        
 
-    elif option==4:
+    elif option == 4:
         if passs.total() == 0:
-            print("")
-            print("No details added yet!!")
-            print("")
+            print("\nNo details added yet!\n")
         else:
             passs.display()
-        
-        
 
-    elif option==5:
-        print("⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠")
-        print("")
-        print("The password generated is ",passs.passwordgen())
-        print("")
-        print("⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠ ⚠")
-        
+    elif option == 5:
+        print("\n⚠ Your generated password is:", passs.passwordgen(), "\n")
 
-    elif option==6:
+    elif option == 6:
         if passs.total() == 0:
-            print("")
-            print("No details added yet!!")
-            print("")
+            print("\nNo details added yet!\n")
         else:
             passs.search()
 
-    elif option==7:
+    elif option == 7:
         while True:
-            print("-> 1 <- to change master password ")
-            print("-> 2 <- to change username.")
-            print("-> 3 <- to exit.")
-            print("")
-            us=int(input("Your option is :: "))
-            print("")
-            if us==1:
-                oldp=input("Enter your existing password :")
-                if oldp == ppp[0]:
+            print("1. CHANGE MASTER PASSWORD")
+            print("2. CHANGE MASTER USERNAME")
+            print("3. RETURN TO MAIN MENU\n")
+
+            try:
+                us = int(input("Your option is :: "))
+            except ValueError:
+                print("Invalid input. Enter a number.")
+                continue
+
+            if us == 1:
+                oldp = input("Enter your existing password: ")
+                if bcrypt.checkpw(oldp.encode(), password_hash):
                     passs.mainpass()
-                    
-                    print("")
-                    print("<<<< Password succesfully updated >>>>")
-                    print("")
+                    print("\n<< Password updated successfully >>\n")
+                    password_hash = passs.getpass()  # refresh hash
                 else:
-                    print("")
-                    print("⚠⚠⚠⚠⚠ Old password does not match ⚠⚠⚠⚠⚠")
-                    print("")
-            
-            elif us==2:
-                
-                print("")
-                olda=input("Enter your existing username::")
-                oldi=input("Enter your existing password::")
-                
-                if olda==uuu[0] and oldi==ppp[0]:
-                    print("")
+                    print("\n⚠ Old password does not match ⚠\n")
+
+            elif us == 2:
+                old_user = input("Enter your existing username: ")
+                old_pass = input("Enter your existing password: ")
+                if old_user == username and bcrypt.checkpw(old_pass.encode(), password_hash):
                     passs.mainuser()
-                    
-                    print("<<<< Username succesfully updated >>>>")
-                    print("")
+                    print("\n<< Username updated successfully >>\n")
+                    username = passs.getuser()  # refresh username
                 else:
-                    print("")
-                    print("⚠⚠⚠⚠⚠ Old username or password does not match ⚠⚠⚠⚠⚠")
-                    print("")
+                    print("\n⚠ Incorrect current credentials ⚠\n")
 
+            elif us == 3:
+                print("<< Returning to main menu >>\n")
+                break
             else:
-                print("")
-                print("<<<<< Returning to main menu >>>>>")
-                print("")
-                break   
+                print("Invalid option!")
 
-    elif option== 8:
-        print("")
-        print("We keep all your details safe,thank you!!!")
-        print("")
-        print("<<<<<<<< Exiting application in 5 >>>>>>>>")
-        for i in range(1,6):
-            print(i," >> ",end="")
+    elif option == 8:
+        print("\nWe keep all your details safe. Thank you!")
+        print("Exiting in:")
+        for i in range(1, 6):
+            print(i, " >> ", end="")
             time.sleep(1)
-        os.system("cls")		
-                 
+        os.system("cls" if os.name == "nt" else "clear")
         break
+
     else:
-        print("Enter a valid option!!!")
+        print("Please enter a valid menu option (1-8)!")
